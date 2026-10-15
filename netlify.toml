@@ -1,0 +1,12 @@
+[build]
+command = "pnpm --filter @workspace/anp-recruitment run build"
+publish = "artifacts/anp-recruitment/dist/public"
+
+[build.environment]
+BASE_PATH = "/"
+PORT = "25723"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200

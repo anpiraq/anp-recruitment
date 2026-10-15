@@ -1,0 +1,261 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: applications
+    description: ANP membership applications and administration
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /me:
+    get:
+      operationId: getCurrentAdmin
+      tags: [applications]
+      summary: Get the current user's application-management role
+      responses:
+        "200":
+          description: Authenticated administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentAdmin"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Account is not allowed to access application data
+  /applications:
+    post:
+      operationId: createApplication
+      tags: [applications]
+      summary: Submit a membership application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationInput"
+      responses:
+        "201":
+          description: Application received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: Invalid application
+    get:
+      operationId: listApplications
+      tags: [applications]
+      summary: List applications for authorized administrators
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ApplicationStatus"
+      responses:
+        "200":
+          description: Application list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [applications]
+                properties:
+                  applications:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Application"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Account is not allowed to access application data
+  /applications/{id}/status:
+    patch:
+      operationId: updateApplicationStatus
+      tags: [applications]
+      summary: Accept, reject, or return an application to pending
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationStatusInput"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Account is not allowed to manage applications
+        "404":
+          description: Application not found
+  /applications/{id}/manager:
+    post:
+      operationId: promoteApplicationToManager
+      tags: [applications]
+      summary: Grant manager access to an accepted applicant's email address
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManagerInput"
+      responses:
+        "201":
+          description: Manager access granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Manager"
+        "400":
+          description: Application must be accepted
+        "401":
+          description: Sign-in required
+        "403":
+          description: Only the primary administrator can add managers
+        "404":
+          description: Application not found
+        "409":
+          description: Email already has an administrator role
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ApplicationStatus:
+      type: string
+      enum: [pending, accepted, rejected]
+    ApplicationInput:
+      type: object
+      required: [fullName, age, governorate, socialContact, contribution]
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 120
+        age:
+          type: integer
+          minimum: 14
+          maximum: 70
+        governorate:
+          type: string
+          minLength: 2
+          maxLength: 80
+        socialContact:
+          type: string
+          minLength: 2
+          maxLength: 160
+        phone:
+          type: ["string", "null"]
+          maxLength: 40
+        contribution:
+          type: string
+          minLength: 2
+          maxLength: 1200
+    ApplicationStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, accepted, rejected]
+    Application:
+      type: object
+      required:
+        [id, fullName, age, governorate, socialContact, phone, contribution, status, createdAt, reviewedAt, reviewedBy, managerEmail]
+      properties:
+        id:
+          type: integer
+        fullName:
+          type: string
+        age:
+          type: integer
+        governorate:
+          type: string
+        socialContact:
+          type: string
+        phone:
+          type: ["string", "null"]
+        contribution:
+          type: string
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        createdAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: ["string", "null"]
+          format: date-time
+        reviewedBy:
+          type: ["string", "null"]
+        managerEmail:
+          type: ["string", "null"]
+    CurrentAdmin:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [primary, manager]
+    ManagerInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    Manager:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [manager]

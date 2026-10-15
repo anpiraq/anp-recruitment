@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "استمارة الانضمام ANP"
+description = "استمارة عربية للتطوع والانضمام إلى حزب الهوية القومية البديل ANP، مع لوحة إدارة محمية لإدارة الطلبات وصلاحيات المديرين وحفظ مركزي في قاعدة البيانات."
+version = "1.0.0"
+id = "artifacts/anp-recruitment"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25723
+
+[services.development]
+run = "pnpm --filter @workspace/anp-recruitment run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/anp-recruitment", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/anp-recruitment/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25723"
+BASE_PATH = "/"
