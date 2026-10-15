@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
+import { ClerkProvider, useAuth, useClerk, useSignIn } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { arSA } from '@clerk/localizations';
 import { dark } from '@clerk/themes';
@@ -27,6 +27,8 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const ADMIN_SIGN_IN_EMAIL = 'anp.iraq@gmail.com';
+const ADMIN_SIGN_IN_DENIED = 'تم حظر تسجيل الدخول. أنت غير مخوّل لاستخدام بوابة الإدارة.';
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
 });
@@ -217,47 +219,85 @@ function PublicForm() {
 }
 
 function SignInPage() {
+  const { signIn } = useSignIn();
+  const { isLoaded } = useAuth();
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function submitSignIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    const normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail !== ADMIN_SIGN_IN_EMAIL) {
+      setError(ADMIN_SIGN_IN_DENIED);
+      setPassword('');
+      return;
+    }
+    if (!isLoaded) {
+      setError('بوابة الإدارة غير متاحة الآن. حاول مرة أخرى.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { error: signInError } = await signIn.password({
+        emailAddress: normalizedEmail,
+        password,
+      });
+      if (signInError || signIn.status !== 'complete') {
+        setError(ADMIN_SIGN_IN_DENIED);
+        setPassword('');
+        return;
+      }
+
+      await signIn.finalize({
+        navigate: ({ decorateUrl }) => {
+          const url = decorateUrl(`${basePath}/admin`);
+          if (url.startsWith('http')) {
+            window.location.assign(url);
+            return;
+          }
+          setLocation(stripBase(url));
+        },
+      });
+    } catch {
+      setError(ADMIN_SIGN_IN_DENIED);
+      setPassword('');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="sign-page" dir="rtl" lang="ar">
       <aside className="sign-aside">
         <Brand />
         <div>
           <h1>مساحة الإدارة،<br />بمسؤولية مشتركة.</h1>
-          <p>تسجيل الدخول مخصص لأعضاء الإدارة المخوّلين لمراجعة طلبات الانضمام.</p>
+          <p>تسجيل الدخول مخصص لحساب الإدارة المخوّل لمراجعة طلبات الانضمام.</p>
         </div>
         <span className="page-end" style={{ color: '#e3cfc4', textAlign: 'right' }}>ANP · إدارة طلبات الانضمام</span>
       </aside>
       <main className="sign-main">
         <div className="sign-main-inner">
           <p className="auth-overline">بوابة الإدارة</p>
-          <SignIn
-            routing="path"
-            path={`${basePath}/sign-in`}
-            signUpUrl={`${basePath}/sign-up`}
-            forceRedirectUrl={`${basePath}/admin`}
-          />
-          <Link className="sign-back" href="/"><ArrowLeft size={15} /> العودة إلى استمارة الانضمام</Link>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-function SignUpPage() {
-  return (
-    <div className="sign-page" dir="rtl" lang="ar">
-      <aside className="sign-aside">
-        <Brand />
-        <div>
-          <h1>حساب إداري<br />بصلاحية موثوقة.</h1>
-          <p>تُمنح صلاحيات مراجعة الطلبات من الإدارة الرئيسية. إنشاء الحساب وحده لا يمنح صلاحية الوصول.</p>
-        </div>
-        <span className="page-end" style={{ color: '#e3cfc4', textAlign: 'right' }}>ANP · إدارة طلبات الانضمام</span>
-      </aside>
-      <main className="sign-main">
-        <div className="sign-main-inner">
-          <p className="auth-overline">إنشاء حساب</p>
-          <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+          <form className="admin-auth-form" onSubmit={submitSignIn} noValidate={false}>
+            <div className="field">
+              <label htmlFor="admin-email">البريد الإلكتروني</label>
+              <input id="admin-email" name="email" type="email" dir="ltr" autoComplete="email" inputMode="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="أدخل بريدك الإلكتروني" data-testid="input-admin-email" />
+            </div>
+            <div className="field">
+              <label htmlFor="admin-password">كلمة المرور</label>
+              <input id="admin-password" name="password" type="password" dir="ltr" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="أدخل كلمة المرور" data-testid="input-admin-password" />
+            </div>
+            {error && <p className="admin-auth-error" role="alert" data-testid="status-admin-sign-in-error">{error}</p>}
+            <button className="submit-button" type="submit" disabled={!isLoaded || isSubmitting} data-testid="button-admin-sign-in">
+              {isSubmitting ? 'جارٍ التحقق…' : 'تسجيل الدخول'}
+            </button>
+          </form>
           <Link className="sign-back" href="/"><ArrowLeft size={15} /> العودة إلى استمارة الانضمام</Link>
         </div>
       </main>
@@ -401,7 +441,7 @@ function AdminDashboard() {
       <main className="state-card" dir="rtl" data-testid="state-admin-denied">
         <div className="detail-empty-mark"><ShieldCheck size={22} /></div>
         <h2>الوصول غير متاح</h2>
-        <p>هذا الحساب غير مخوّل لمراجعة طلبات الانضمام.</p>
+        <p>{ADMIN_SIGN_IN_DENIED}</p>
         <Link className="secondary-button" href="/">العودة إلى الاستمارة</Link>
       </main>
     );
@@ -555,7 +595,6 @@ function Routes() {
       <Route path="/" component={PublicForm} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/sign-in/*?" component={SignInPage} />
-      <Route path="/sign-up/*?" component={SignUpPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -569,7 +608,6 @@ function ClerkProviderWithRoutes() {
       proxyUrl={clerkProxyUrl}
       appearance={appearance}
       signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
       localization={arSA}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
