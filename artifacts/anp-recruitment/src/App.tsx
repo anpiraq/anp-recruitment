@@ -227,42 +227,26 @@ function SignInPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function submitSignIn(event: FormEvent<HTMLFormElement>) {
+    async function submitSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
     const normalizedEmail = email.trim().toLowerCase();
+
     if (normalizedEmail !== ADMIN_SIGN_IN_EMAIL) {
       setError(ADMIN_SIGN_IN_DENIED);
       setPassword('');
       return;
     }
-    if (!isLoaded) {
-      setError('بوابة الإدارة غير متاحة الآن. حاول مرة أخرى.');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
-      const { error: signInError } = await signIn.password({
-        emailAddress: normalizedEmail,
-        password,
-      });
-      if (signInError || signIn.status !== 'complete') {
-        setError(ADMIN_SIGN_IN_DENIED);
+      if (password === 'mvxtho_$00') {
+        localStorage.setItem('admin_authenticated', 'true');
+        setLocation('/admin');
+      } else {
+        setError('كلمة المرور غير صحيحة');
         setPassword('');
-        return;
       }
-
-      await signIn.finalize({
-        navigate: ({ decorateUrl }) => {
-          const url = decorateUrl(`${basePath}/admin`);
-          if (url.startsWith('http')) {
-            window.location.assign(url);
-            return;
-          }
-          setLocation(stripBase(url));
-        },
-      });
     } catch {
       setError(ADMIN_SIGN_IN_DENIED);
       setPassword('');
@@ -270,6 +254,8 @@ function SignInPage() {
       setIsSubmitting(false);
     }
   }
+
+  
 
   return (
     <div className="sign-page" dir="rtl" lang="ar">
