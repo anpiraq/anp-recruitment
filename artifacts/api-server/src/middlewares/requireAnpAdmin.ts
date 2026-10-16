@@ -1,7 +1,5 @@
 import { clerkClient, getAuth } from "@clerk/express";
 import type { RequestHandler } from "express";
-import { eq } from "drizzle-orm";
-import { db, anpManagersTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 
 const PRIMARY_ADMIN_EMAIL = "anp.iraq@gmail.com";
@@ -42,24 +40,12 @@ export const requireAnpAdmin: RequestHandler = async (req, res, next) => {
     }
 
     const email = primaryEmail.emailAddress.trim().toLowerCase();
-    if (email === PRIMARY_ADMIN_EMAIL) {
-      res.locals.anpAdmin = { email, role: "primary" };
-      next();
+    if (email !== PRIMARY_ADMIN_EMAIL) {
+      res.status(403).json({ error: "تم حظر تسجيل الدخول. أنت غير مخوّل لاستخدام بوابة الإدارة." });
       return;
     }
 
-    const [manager] = await db
-      .select({ email: anpManagersTable.email })
-      .from(anpManagersTable)
-      .where(eq(anpManagersTable.email, email))
-      .limit(1);
-
-    if (!manager) {
-      res.status(403).json({ error: "هذا الحساب غير مخوّل للوصول إلى الطلبات." });
-      return;
-    }
-
-    res.locals.anpAdmin = { email, role: "manager" };
+    res.locals.anpAdmin = { email, role: "primary" };
     next();
   } catch {
     logger.error("ANP admin authorization check failed");

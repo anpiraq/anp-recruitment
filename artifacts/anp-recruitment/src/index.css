@@ -406,6 +406,11 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 .sign-main-inner .auth-overline { color: #8a7444; font-size: .83rem; margin-bottom: 17px; }
 .sign-back { display: inline-flex; margin-top: 19px; color: #873039; text-decoration: none; font-size: .87rem; }
 .sign-back:hover { text-decoration: underline; }
+.admin-auth-form { text-align: right; }
+.admin-auth-form .field + .field { margin-top: 16px; }
+.admin-auth-form .field input { direction: ltr; text-align: left; }
+.admin-auth-form .submit-button { width: 100%; margin-top: 18px; }
+.admin-auth-error { margin: 16px 0 0; padding: 12px 14px; border: 1px solid #6d3438; border-radius: 8px; background: #382326; color: #f18484; line-height: 1.7; }
 .not-found { min-height: 100dvh; display: grid; place-items: center; text-align: center; padding: 24px; }
 .not-found h1 { font-size: 3rem; margin: 0; color: #873039; }
 .not-found p { color: #777064; }
